@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Trainingsplan</title>
+  <meta name="description" content="Persönlicher Trainingsplan – Wochenansicht">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f3f4f7">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Training">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app"><p class="boot">Lade Trainingsplan …</p></div>
+  <noscript><p class="boot">Diese App benötigt JavaScript.</p></noscript>
+  <script>
+    // Browser blockieren ES-Module und fetch() bei file:// – dann hilft nur ein Webserver oder standalone.html.
+    if (location.protocol === 'file:') {
+      document.querySelector('.boot').textContent =
+        'Diese Seite wurde direkt als Datei geöffnet. Das blockiert der Browser. ' +
+        'Bitte standalone.html öffnen oder die App über einen Webserver starten (siehe README.md).';
+    }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
