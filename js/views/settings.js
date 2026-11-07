@@ -3,7 +3,7 @@ import { appBar } from '../ui/appbar.js';
 import { state, setState } from '../core/store.js';
 import * as settings from '../core/settings.js';
 import { getTheme, setTheme } from '../core/theme.js';
-import { importFile, clearImports, reload } from '../core/sources.js';
+import { importFile, clearImports, reload, forgetDeviceFiles } from '../core/sources.js';
 import { DATASETS } from '../core/datasets.js';
 import { parseISODate, mondayOf, toISODate } from '../core/plan.js';
 import { render } from '../core/router.js';
@@ -144,6 +144,11 @@ export default {
         h('section', { class: 'card' }, h('h2', {}, 'Alle Dateien auf einmal'),
           h('p', { class: 'hint', style: { margin: '0 0 12px' } }, 'Mehrere CSV-Dateien gleichzeitig auswählen, zum Beispiel direkt aus OneDrive. Die App erkennt, welche Datei welche ist.'),
           multiImportButton({ label: 'Dateien auswählen und importieren' })),
+        state.deviceFiles.length
+          ? h('section', { class: 'card' }, h('h2', {}, 'Gemerkte Dateien'),
+              h('p', { class: 'hint', style: { margin: '0 0 12px' } }, `${state.deviceFiles.map((f) => f.name).join(', ')}. Diese Dateien liest die App bei jedem Öffnen neu.`),
+              h('button', { class: 'btn btn-ghost', type: 'button', onclick: async () => { await forgetDeviceFiles(); flash = { msg: 'Gemerkte Dateien vergessen. Importierte Daten bleiben erhalten.' }; render(); } }, 'Gemerkte Dateien vergessen'))
+          : null,
         dataCards,
         h('section', { class: 'card' },
           h('div', { class: 'btn-row', style: { marginTop: '0' } },

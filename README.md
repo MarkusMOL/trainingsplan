@@ -8,13 +8,20 @@ Reines HTML/CSS/JavaScript, kein Backend, kein Build-Schritt.
 - `standalone.html` (separat geliefert): alles in einer Datei, mit eingebetteten Daten. Nur zum privaten Ausprobieren
   per Doppelklick am Rechner. Nicht veröffentlichen!
 
+## Dateien einmal wählen und merken (Chrome auf Android ab Version 132, Chrome/Edge am Rechner)
+Auf der Startseite: **„Dateien auswählen und merken“**. Im Android-Dateidialog (auch direkt aus OneDrive) wählst du die CSV-Dateien
+einmal aus. Die App erkennt, welche Datei welche ist, und merkt sich den Zugriff. Bei jedem Öffnen der App und beim Zurückkehren
+nach einigen Minuten liest sie diese Dateien selbst neu und übernimmt Änderungen.
+- Fragt Android in einer neuen Sitzung erneut nach der Erlaubnis, erscheint ein Hinweis. Ein Tipp auf **„Daten aktualisieren“**
+  und die Bestätigung genügen.
+- Wird eine Datei verschoben oder gelöscht, meldet die App das und arbeitet mit den zuletzt gelesenen Daten weiter.
+- Browser ohne diese Funktion (z. B. Firefox, iPhone) bieten stattdessen **„Daten aktualisieren“**: mehrere CSV-Dateien auf
+  einmal wählen, der Typ wird erkannt.
+- Unter Einstellungen → „Gemerkte Dateien“ kannst du die Merkliste löschen. Importierte Daten bleiben erhalten.
+
 ## Ohne Hosting: nur `standalone.html` auf dem Handy
-Datei herunterladen (nicht in der OneDrive-Vorschau öffnen) und mit Chrome öffnen. Aktualisieren der Daten:
-Startseite → **„Daten aktualisieren“** → eine oder mehrere CSV-Dateien wählen (der Dateiauswahldialog kann direkt in
-OneDrive blättern). Die App erkennt selbst, welche Datei Plan, Ist-Daten, Basisdaten, WK-Kalender oder Vorjahre ist.
-Einschränkungen: Das Nachladen passiert nicht automatisch beim Öffnen, und ein Startbildschirm-Icon für eine lokale
-Datei ist unter Android nicht zuverlässig (die Verknüpfung zeigt oft auf eine abgelaufene Adresse).
-Automatisches Nachladen aus OneDrive und ein echtes App-Icon gibt es nur mit der gehosteten Variante unten.
+Datei herunterladen (nicht in der OneDrive-Vorschau öffnen) und mit Chrome öffnen. Ein Startbildschirm-Icon für eine lokale
+Datei ist unter Android nicht zuverlässig. Für ein echtes App-Icon braucht es die gehostete Variante unten.
 
 ## 1. App auf dem Handy installieren
 Eine PWA braucht HTTPS. Die Dateien müssen dafür auf einen Webserver. Einfachste Wege (jeweils kostenlos):

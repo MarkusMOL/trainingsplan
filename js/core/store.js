@@ -8,6 +8,8 @@ export const state = {
   warnings: [],                                  // z. B. ungültige OneDrive-Datei, Ersatzdaten verwendet
   syncing: false,                                // OneDrive-Abgleich läuft
   sync: null,                                    // { authNeeded, errors[] } nach dem letzten Abgleich
+  deviceFiles: [],                               // gemerkte Geräte-Dateien [{ id, name }]
+  fileAccessNeeded: false,                       // Browser verlangt erneute Freigabe der gemerkten Dateien
   importNote: null,                              // Ergebnis des letzten Mehrfach-Imports { lines[], error }
   authError: null,                               // Fehler bei der Rückkehr von der Microsoft-Anmeldung
 };

@@ -3,7 +3,8 @@ import { icon } from '../ui/icons.js';
 import { appBar } from '../ui/appbar.js';
 import { tiles } from '../tiles/registry.js';
 import { state, setState } from '../core/store.js';
-import { multiImportButton, importNoteBanner } from '../ui/import-button.js';
+import { importNoteBanner } from '../ui/import-button.js';
+import { updateBox } from '../ui/update-box.js';
 import * as settings from '../core/settings.js';
 import { fmtShortDate, fmtDateTime } from '../core/format.js';
 import { signIn, isConfigured } from '../core/onedrive.js';
@@ -65,9 +66,7 @@ export default {
       h('main', { class: 'content' },
         banners,
         plan ? grid : null,
-        !od ? h('div', { class: 'update-box' },
-          multiImportButton({ label: 'Daten aktualisieren', cls: 'btn btn-wide' }),
-          h('p', { class: 'hint' }, `Wähle eine oder mehrere CSV-Dateien aus (auch direkt aus OneDrive). Die Art der Datei wird erkannt.${importedAt ? ` Zuletzt aktualisiert: ${fmtDateTime(importedAt)}.` : ''}`)) : null,
+        !od ? updateBox() : null,
         foot.length ? h('p', { class: 'footnote' }, foot.join(' · ')) : null)));
   },
 };

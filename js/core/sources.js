@@ -8,6 +8,7 @@ import { parseHistory } from './history.js';
 import { DATASETS, dataset } from './datasets.js';
 import * as settings from './settings.js';
 import { getConfig, isConfigured } from './onedrive.js';
+import * as fh from './filehandles.js';
 import { state, setState } from './store.js';
 
 // standalone.html liefert die Daten eingebettet mit (dort ist fetch() per file:// nicht möglich).
@@ -142,7 +143,7 @@ export async function importFiles(files) {
   const items = [];
   for (const file of files) {
     const text = decodeBytes(await file.arrayBuffer());
-    items.push({ name: file.name, text, id: detectDataset(text) });
+    items.push({ name: file.name, text, id: detectDataset(text), handle: file.handle });
   }
   const order = ['plan', 'ist', 'basis', 'wk', 'hist'];
   items.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
@@ -151,6 +152,7 @@ export async function importFiles(files) {
     if (!it.id) { results.push({ name: it.name, id: null, ok: false, error: 'Dateityp nicht erkannt' }); continue; }
     try {
       saveImport(it.id, it.text, it.name);
+      if (it.handle) await fh.remember(it.id, it.handle).catch((e) => console.warn('Datei konnte nicht gemerkt werden', e));
       results.push({ name: it.name, id: it.id, ok: true });
       if (it.id === 'plan') await reload(); // Ist-Daten werden gegen den (neuen) Plan geprüft
     } catch (e) {
@@ -163,4 +165,62 @@ export async function importFiles(files) {
 
 export function clearImports() {
   for (const ds of DATASETS) { settings.remove(ds.imp); settings.remove(ds.impName); }
+}
+
+// ---- Gemerkte Geräte-Dateien (Dateiauswahl nur einmal) ----
+
+/** Aktualisiert die Anzeige-Liste der gemerkten Dateien. */
+export async function loadDeviceFiles() {
+  const list = await fh.remembered();
+  setState({ deviceFiles: list.map((e) => ({ id: e.id, name: e.handle.name })) });
+}
+
+/** Dateien über den Auswahldialog wählen, importieren und für später merken. */
+export async function pickAndRemember() {
+  const handles = await fh.pick();
+  if (!handles.length) return null;
+  const files = await Promise.all(handles.map(async (handle) => {
+    const f = await handle.getFile();
+    return { name: f.name, arrayBuffer: () => f.arrayBuffer(), handle };
+  }));
+  const results = await importFiles(files);
+  await loadDeviceFiles();
+  return results;
+}
+
+export async function forgetDeviceFiles() {
+  await fh.forgetAll();
+  await loadDeviceFiles();
+}
+
+/**
+ * Liest alle gemerkten Dateien neu und übernimmt geänderte.
+ * interactive=true (aus einem Tipp heraus) darf die Freigabe neu anfragen; sonst werden Dateien ohne Freigabe übersprungen.
+ * @returns {Promise<{results: {id, ok?, unchanged?, error?, name?}[], needPermission: boolean, changed: boolean}>}
+ */
+export async function refreshFromHandles({ interactive = false } = {}) {
+  const order = ['plan', 'ist', 'basis', 'wk', 'hist'];
+  const list = (await fh.remembered()).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const results = [];
+  let needPermission = false, changed = false;
+  for (const { id, handle } of list) {
+    const ds = dataset(id);
+    if (!ds) continue;
+    try {
+      let perm = await handle.queryPermission({ mode: 'read' });
+      if (perm !== 'granted' && interactive) perm = await handle.requestPermission({ mode: 'read' });
+      if (perm !== 'granted') { needPermission = true; continue; }
+      const file = await handle.getFile();
+      const text = decodeBytes(await file.arrayBuffer());
+      if (text === settings.get(ds.imp)) { results.push({ id, unchanged: true, name: file.name }); continue; }
+      saveImport(id, text, file.name);
+      changed = true;
+      results.push({ id, ok: true, name: file.name });
+      if (id === 'plan') await reload();
+    } catch (e) {
+      results.push({ id, ok: false, name: handle.name, error: e.name === 'NotFoundError' ? 'Datei nicht mehr vorhanden (verschoben oder gelöscht)' : e.message });
+    }
+  }
+  if (changed) await reload();
+  return { results, needPermission, changed };
 }

@@ -1,14 +1,14 @@
 // Service Worker: App-Shell offline verfügbar.
 // Bei Änderungen an Dateien VERSION erhöhen, damit installierte Apps den neuen Stand holen.
-const VERSION = 'v6';
+const VERSION = 'v7';
 const CACHE = `trainingsplan-${VERSION}`;
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
   './js/main.js',
-  './js/core/compare.js', './js/core/config.js', './js/core/csv.js', './js/core/datasets.js', './js/core/events.js', './js/core/format.js', './js/core/history.js', './js/core/ist.js', './js/core/onedrive.js', './js/core/plan.js',
+  './js/core/compare.js', './js/core/config.js', './js/core/csv.js', './js/core/datasets.js', './js/core/devicesync.js', './js/core/filehandles.js', './js/core/events.js', './js/core/format.js', './js/core/history.js', './js/core/ist.js', './js/core/onedrive.js', './js/core/plan.js',
   './js/core/router.js', './js/core/settings.js', './js/core/sources.js', './js/core/stats.js', './js/core/store.js', './js/core/sync.js', './js/core/theme.js',
-  './js/ui/appbar.js', './js/ui/charts.js', './js/ui/compare-card.js', './js/ui/dom.js', './js/ui/event-card.js', './js/ui/goal.js', './js/ui/icons.js', './js/ui/import-button.js', './js/ui/session-card.js', './js/ui/sheet.js',
+  './js/ui/appbar.js', './js/ui/charts.js', './js/ui/compare-card.js', './js/ui/dom.js', './js/ui/event-card.js', './js/ui/goal.js', './js/ui/icons.js', './js/ui/import-button.js', './js/ui/update-box.js', './js/ui/session-card.js', './js/ui/sheet.js',
   './js/ui/swipe.js', './js/ui/week-header.js', './js/ui/week-picker.js',
   './js/tiles/registry.js',
   './js/views/compare.js', './js/views/events.js', './js/views/home.js', './js/views/routes.js', './js/views/settings.js',
