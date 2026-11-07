@@ -30,8 +30,6 @@ export function updateBox() {
       h('p', { class: 'hint' }, 'Einmal die CSV-Dateien auswählen (auch direkt aus OneDrive). Danach liest die App sie bei jedem Öffnen selbst, ohne erneute Auswahl.'));
   }
   return h('div', { class: 'update-box' },
-    state.fileAccessNeeded
-      ? h('div', { class: 'banner' }, 'Android möchte den Dateizugriff erneut bestätigen. Tippe auf „Daten aktualisieren“ und erlaube den Zugriff.') : null,
     h('button', { class: 'btn btn-wide', type: 'button', onclick: () => deviceRefresh({ interactive: true }) }, 'Daten aktualisieren'),
     h('button', { class: 'btn btn-ghost btn-wide', type: 'button', style: { marginTop: '8px' }, onclick: choose }, 'Andere Dateien wählen'),
     h('p', { class: 'hint' }, `Gemerkt: ${files.map((f) => f.name).join(', ')}.${checked ? ` Zuletzt geprüft: ${fmtDateTime(checked)}.` : ''}`));

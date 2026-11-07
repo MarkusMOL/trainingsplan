@@ -1,6 +1,6 @@
 // Service Worker: App-Shell offline verfügbar.
 // Bei Änderungen an Dateien VERSION erhöhen, damit installierte Apps den neuen Stand holen.
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `trainingsplan-${VERSION}`;
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
