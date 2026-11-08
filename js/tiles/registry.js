@@ -46,7 +46,7 @@ export const tiles = [
       if (cur.status === 'before') return noData('Plan startet erst', `in ${cur.daysUntil} Tag(en)`);
       const t = compareWeek(plan, ist, cur.week, startISO).totals;
       return {
-        lines: [`Woche ${cur.week} · ${t.ratio === null ? 'noch nichts fällig' : pct(t.ratio)}`, `${fmtDuration(t.done)} / ${fmtDuration(t.due)} h`],
+        lines: [`Woche ${cur.week} · ${t.ratio === null ? 'noch nichts fällig' : pct(t.ratio)}`, `${fmtDuration(t.actual)} / ${fmtDuration(t.due)} h`],
         level: t.level,
       };
     },

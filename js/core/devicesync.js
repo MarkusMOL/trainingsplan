@@ -14,25 +14,27 @@ export function summarizeRefresh(r) {
     const label = dataset(x.id).label;
     return x.ok ? `✓ ${label} aktualisiert: ${x.name}` : x.unchanged ? `– ${label} unverändert` : `✕ ${label}: ${x.error}`;
   });
-  if (r.needPermission) lines.push('Für einige Dateien fehlt noch die Freigabe.');
-  return { lines, error: r.results.some((x) => x.ok === false) || r.needPermission };
+  return { lines, error: r.results.some((x) => x.ok === false) };
 }
 
 /**
  * force=false beachtet den Mindestabstand; interactive=true nur aus einem Tipp heraus (darf Freigabe anfragen).
- * Die Ansicht wird nur neu aufgebaut, wenn sich etwas geändert hat oder eine Freigabe fehlt.
+ * Die Ansicht wird nur neu aufgebaut, wenn sich etwas geändert hat. quiet=true: keine Meldung/kein Neuaufbau (Aufrufer übernimmt das).
  */
-export async function deviceRefresh({ force = false, interactive = false } = {}) {
+export async function deviceRefresh({ force = false, interactive = false, quiet = false } = {}) {
   if (!fh.isSupported() || running) return null;
   if (!force && !interactive && Date.now() - Number(settings.get('devTry', '0')) < SYNC.minIntervalMin * 60000) return null;
   running = true;
   try {
     settings.set('devTry', String(Date.now()));
     const r = await refreshFromHandles({ interactive, list: interactive ? state.deviceFiles : null });
-    if (r.results.length || r.needPermission) settings.set('devCheckedAt', String(Date.now()));
-    setState({ fileAccessNeeded: r.needPermission });
-    if (interactive) setState({ importNote: summarizeRefresh(r) });
-    if (r.changed || r.needPermission || interactive) render();
+    if (r.results.length) settings.set('devCheckedAt', String(Date.now()));
+    // Merken: Verweigert das Gerät die erneute Freigabe endgültig ("denied", z. B. Chrome auf Android), springen wir künftig sofort zur Dateiauswahl.
+    r.denied = r.results.some((x) => x.ok === false && /Status: denied/.test(x.error ?? ''));
+    if (r.denied) settings.set('permDenied', '1');
+    else if (r.results.some((x) => x.ok || x.unchanged)) settings.remove('permDenied');
+    if (interactive && !quiet) setState({ importNote: summarizeRefresh(r) });
+    if (r.changed || (interactive && !quiet)) render();
     return r;
   } catch (e) {
     console.warn('Abgleich der gemerkten Dateien fehlgeschlagen', e);
@@ -41,7 +43,6 @@ export async function deviceRefresh({ force = false, interactive = false } = {})
     running = false;
   }
 }
-
 
 /** Diagnose für die Einstellungen: Zugriffsstatus jeder gemerkten Datei (nur aus einem Tipp heraus aufrufen). */
 export async function diagnoseDeviceFiles() {

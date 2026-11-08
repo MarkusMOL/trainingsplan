@@ -28,17 +28,20 @@ function message(text) {
 
 /** Stapelbalken: erledigt / verpasst / offen im Verhältnis zum Plan des Blocks. */
 function blockBar(bp) {
-  const w = (v) => `${(v / bp.planTotal) * 100}%`;
-  return h('div', { class: 'stack', role: 'img', 'aria-label': 'Block: erledigt, verpasst, offen' },
-    h('span', { class: 'stack-done', style: { width: w(Math.min(bp.done, bp.planTotal)) } }),
+  // Basis: Plan-Umfang, bei Übererfüllung die Summe aller Teile, damit nichts abgeschnitten wird
+  const base = Math.max(bp.planTotal, bp.done + bp.extra + bp.missed + bp.pending);
+  const w = (v) => `${(v / base) * 100}%`;
+  return h('div', { class: 'stack', role: 'img', 'aria-label': 'Block: erledigt, ungeplant, verpasst, offen' },
+    h('span', { class: 'stack-done', style: { width: w(bp.done) } }),
+    h('span', { class: 'stack-extra', style: { width: w(bp.extra) } }),
     h('span', { class: 'stack-missed', style: { width: w(bp.missed) } }),
     h('span', { class: 'stack-pending', style: { width: w(bp.pending) } }),
-    h('span', { class: 'stack-mark', style: { left: `${THRESHOLDS.green * 100}%` } }));
+    h('span', { class: 'stack-mark', style: { left: `${((THRESHOLDS.green * bp.planTotal) / base) * 100}%` } }));
 }
 
 function quoteText(bp) {
   if (!bp.started && bp.pending === bp.planTotal) return { value: '–', note: 'Der Block hat noch nicht begonnen.' };
-  if (bp.finished) return { value: pct(bp.done / bp.planTotal), note: 'Block abgeschlossen: Erfüllung insgesamt.' };
+  if (bp.finished) return { value: pct(bp.actual / bp.planTotal), note: 'Block abgeschlossen: Erfüllung insgesamt.' };
   if (bp.needQuote === 0) return { value: '0 %', note: 'Die 90 % sind bereits gesichert.' };
   if (bp.needQuote === Infinity || bp.needQuote > 1.5) return { value: '> 150 %', note: 'Über 90 % sind kaum noch erreichbar.' };
   return { value: pct(bp.needQuote), note: `Mit dieser Quote bei den restlichen Einheiten landet der Block über ${Math.round(THRESHOLDS.green * 100)} %.` };
@@ -68,7 +71,12 @@ export default {
     const weeksWithDue = st.weeks.filter((w) => w.due > 0);
     const chart = weeksWithDue.length
       ? barChart({
-          bars: st.weeks.map((w) => ({ label: String(w.week), parts: [{ value: w.ratio === null ? 0 : Math.min(150, w.ratio * 100), color: `var(--lv-${w.level ?? 'red'})` }] })),
+          bars: st.weeks.map((w) => {
+            // Balken = Gesamtquote; unterer Teil planmäßig (Ampelfarbe), oberer Teil ungeplant (blau); höchstens 150 %
+            const planned = w.due > 0 ? (w.done / w.due) * 100 : 0, unplanned = w.due > 0 ? (w.extra / w.due) * 100 : 0;
+            const f = Math.min(1, 150 / Math.max(1, planned + unplanned));
+            return { label: String(w.week), parts: [{ value: planned * f, color: `var(--lv-${w.level ?? 'red'})` }, { value: unplanned * f, color: 'var(--accent)' }] };
+          }),
           yMax: 150, yTicks: [0, 50, 100, 150], yFmt: (v) => `${Math.round(v)}`, xEvery: Math.max(1, Math.ceil(st.weeks.length / 12)),
           guides: [{ y: THRESHOLDS.green * 100, label: '90 %', color: 'var(--lv-green)' }, { y: THRESHOLDS.yellow * 100, label: '50 %', color: 'var(--lv-yellow)' }],
           label: 'Erfüllung je Woche in Prozent',
@@ -83,18 +91,19 @@ export default {
           h('h2', {}, `Plan-Erfüllung bis heute · Woche ${st.currentWeek}`),
           h('div', { class: 'big' }, dot(st.level), pct(st.ratio), st.level ? h('span', { class: 'big-note' }, LEVEL_LABEL[st.level]) : null),
           levelBar(st.ratio, st.level),
-          h('p', { class: 'hint' }, `Ist ${fmtDuration(st.done)} h von ${fmtDuration(st.due)} h Soll · Einheiten: ${st.count.done} erledigt, ${st.count.missed} verpasst, ${st.count.pending} offen${st.extra > 0 ? ` · ${fmtDuration(st.extra)} h ungeplant` : ''}`),
+          h('p', { class: 'hint' }, `Ist ${fmtDuration(st.actual)} h von ${fmtDuration(st.due)} h Soll${st.extra > 0 ? ` (darin ${fmtDuration(st.extra)} h ungeplant)` : ''} · Einheiten: ${st.count.done} erledigt, ${st.count.missed} verpasst, ${st.count.pending} offen${st.count.extra ? `, ${st.count.extra} ungeplant` : ''}`),
           h('div', { class: 'rows' }, st.bySport.map((s) => {
             const lvl = s.ratio === null ? null : levelOf(s.ratio);
             return h('div', { class: 'row' },
               h('span', { class: 'row-label' }, SPORTS[s.sport]?.icon ?? '•', ' ', SPORTS[s.sport]?.label ?? s.sport),
-              h('span', { class: 'row-val' }, `${fmtDuration(s.done)} / ${fmtDuration(s.due)}`),
+              h('span', { class: 'row-val' }, `${fmtDuration(s.actual)} / ${fmtDuration(s.due)}`),
               h('span', { class: 'row-pct' }, pct(s.ratio)),
               levelBar(s.ratio, lvl));
           }))),
 
         // 2) Wochenverlauf
         chart ? h('section', { class: 'card' }, h('h2', {}, 'Erfüllung je Woche (%)'), chart,
+          h('p', { class: 'legend legend-left' }, h('span', {}, h('i', { class: 'sw sw-done' }), 'planmäßig (Farbe = Ampel)'), h('span', {}, h('i', { class: 'sw sw-extra' }), 'ungeplant (zählt mit)')),
           h('div', { class: 'facts' },
             h('span', {}, `Serie grüner Wochen: ${st.streak}`),
             st.best ? h('span', {}, `Beste: Woche ${st.best.week} (${pct(st.best.ratio)})`) : null,
@@ -109,21 +118,22 @@ export default {
           blockBar(bp),
           h('p', { class: 'legend legend-left' },
             h('span', {}, h('i', { class: 'sw sw-done' }), `erledigt ${fmtDuration(bp.done)}`),
+            bp.extra > 0 ? h('span', {}, h('i', { class: 'sw sw-extra' }), `ungeplant ${fmtDuration(bp.extra)}`) : null,
             h('span', {}, h('i', { class: 'sw sw-missed' }), `verpasst ${fmtDuration(bp.missed)}`),
             h('span', {}, h('i', { class: 'sw sw-pending' }), `offen ${fmtDuration(bp.pending)}`),
             h('span', {}, `Soll gesamt ${fmtDuration(bp.planTotal)} h`)),
           h('div', { class: 'kpis' },
             h('div', { class: 'kpi' }, h('span', { class: 'kpi-label' }, 'Quote bisher'), h('span', { class: 'kpi-val' }, dot(bp.level), pct(bp.ratioSoFar))),
-            h('div', { class: 'kpi' }, h('span', { class: 'kpi-label' }, 'Prognose Block'), h('span', { class: 'kpi-val' }, dot(bp.projectedLevel), bp.finished ? pct(bp.done / bp.planTotal) : pct(bp.projected))),
+            h('div', { class: 'kpi' }, h('span', { class: 'kpi-label' }, 'Prognose Block'), h('span', { class: 'kpi-val' }, dot(bp.projectedLevel), bp.finished ? pct(bp.actual / bp.planTotal) : pct(bp.projected))),
             h('div', { class: 'kpi' }, h('span', { class: 'kpi-label' }, 'Bestfall (Rest 100 %)'), h('span', { class: 'kpi-val' }, pct(bp.best))),
             h('div', { class: 'kpi' }, h('span', { class: 'kpi-label' }, bp.finished ? 'Ergebnis' : 'Rest-Quote für > 90 %'), h('span', { class: 'kpi-val' }, quote.value))),
-          h('p', { class: 'hint' }, quote.note, bp.finished ? '' : ' Prognose = bisherige Quote wird bei den restlichen Einheiten fortgeschrieben.')),
+          h('p', { class: 'hint' }, quote.note, bp.finished ? '' : ' Prognose = bisherige Quote (inkl. ungeplanter Einheiten) wird bei den restlichen Einheiten fortgeschrieben.')),
 
         // 4) Blöcke im Überblick
         h('section', { class: 'card' }, h('h2', {}, 'Blöcke im Überblick'),
           h('div', { class: 'rows' }, blocks.map((blk, i) => {
             const p = blockProjection(plan, ist, blk, startISO, today);
-            const r = p.finished ? p.done / p.planTotal : p.ratioSoFar;
+            const r = p.finished ? p.actual / p.planTotal : p.ratioSoFar;
             return h('a', { class: 'row row-link' + (i === bi ? ' is-active' : ''), href: `#/stats/${i}` },
               h('span', { class: 'row-label' }, `${blk.label}`, h('small', {}, ` · W${blk.firstWeek}–${blk.lastWeek}`)),
               h('span', { class: 'row-val' }, p.finished ? 'abgeschlossen' : p.started ? 'läuft' : 'offen'),

@@ -8,6 +8,25 @@ import { multiImportButton, summarize as summarizeImport } from './import-button
 import { render } from '../core/router.js';
 import { fmtDateTime } from '../core/format.js';
 
+/** Dateiauswahl öffnen (im Ordner der zuletzt gewählten Datei), importieren und merken. */
+async function choose() {
+  const results = await pickAndRemember();
+  if (results) setState({ importNote: summarizeImport(results) });
+  render();
+}
+
+/**
+ * „Daten aktualisieren“: Erst werden die gemerkten Dateien direkt gelesen. Verweigert das Gerät das (Chrome auf Android),
+ * öffnet sich sofort die Dateiauswahl im gleichen Ordner. Dort genügt es, die geänderten Dateien zu wählen.
+ */
+async function smartUpdate() {
+  if (settings.get('permDenied') === '1') return choose(); // bekannt: direkt wählen (Tipp-Aktivierung bleibt erhalten)
+  const r = await deviceRefresh({ interactive: true, quiet: true });
+  if (r?.denied || r?.needPermission) return choose();
+  if (r) setState({ importNote: { lines: r.results.map((x) => (x.ok ? `✓ ${x.name} aktualisiert` : x.unchanged ? `– ${x.name} unverändert` : `✕ ${x.name}: ${x.error}`)), error: r.results.some((x) => x.ok === false) } });
+  render();
+}
+
 /** Aktionen zum Aktualisieren der Daten auf der Startseite (je nach Browser-Unterstützung). */
 export function updateBox() {
   if (!fh.isSupported()) {
@@ -15,22 +34,14 @@ export function updateBox() {
       multiImportButton({ label: 'Daten aktualisieren', cls: 'btn btn-wide' }),
       h('p', { class: 'hint' }, 'Wähle eine oder mehrere CSV-Dateien aus (auch direkt aus OneDrive). Die Art der Datei wird erkannt.'));
   }
-  const files = state.deviceFiles;
-  const checked = Number(settings.get('devCheckedAt', '0'));
-
-  const choose = async () => {
-    const results = await pickAndRemember();
-    if (results) setState({ importNote: summarizeImport(results), fileAccessNeeded: false });
-    render();
-  };
-
-  if (!files.length) {
+  const imported = Number(settings.get('importedAt', '0'));
+  const stand = imported ? ` Zuletzt aktualisiert: ${fmtDateTime(imported)}.` : '';
+  if (!state.deviceFiles.length) {
     return h('div', { class: 'update-box' },
-      h('button', { class: 'btn btn-wide', type: 'button', onclick: choose }, 'Dateien auswählen und merken'),
-      h('p', { class: 'hint' }, 'Einmal die CSV-Dateien auswählen (auch direkt aus OneDrive). Danach liest die App sie bei jedem Öffnen selbst, ohne erneute Auswahl.'));
+      h('button', { class: 'btn btn-wide', type: 'button', onclick: choose }, 'Dateien auswählen'),
+      h('p', { class: 'hint' }, `Wähle die CSV-Dateien aus (auch direkt aus OneDrive). Die Art der Datei wird erkannt.${stand}`));
   }
   return h('div', { class: 'update-box' },
-    h('button', { class: 'btn btn-wide', type: 'button', onclick: () => deviceRefresh({ interactive: true }) }, 'Daten aktualisieren'),
-    h('button', { class: 'btn btn-ghost btn-wide', type: 'button', style: { marginTop: '8px' }, onclick: choose }, 'Dateien neu wählen (öffnet im gleichen Ordner)'),
-    h('p', { class: 'hint' }, `Gemerkt: ${files.map((f) => f.name).join(', ')}.${checked ? ` Zuletzt geprüft: ${fmtDateTime(checked)}.` : ''}`));
+    h('button', { class: 'btn btn-wide', type: 'button', onclick: smartUpdate }, 'Daten aktualisieren'),
+    h('p', { class: 'hint' }, `Wähle im Dialog die geänderten Dateien aus (meist nur die Ist-Datei). Der Dialog öffnet im gleichen Ordner wie zuletzt.${stand}`));
 }

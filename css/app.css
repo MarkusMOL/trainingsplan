@@ -352,3 +352,8 @@ a { color: var(--accent); }
 .update-box { margin-top: 18px; }
 .btn-wide { width: 100%; }
 .update-box .hint { text-align: center; }
+
+/* ===== Ungeplante Einheiten (blau) ===== */
+.stack-extra { background: var(--accent); }
+.sw-extra { background: var(--accent); }
+.banner-extra { border-left: 4px solid var(--accent); }

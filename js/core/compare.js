@@ -15,7 +15,7 @@ const keyOf = (x) => `${x.sport}|${x.regKey}|${x.abc}`;
  * Vergleich einer Woche.
  * Je Planeinheit: 'done' (Ist vorhanden, bewertet), 'missed' (Plantag liegt vor heute, kein Ist -> rot)
  * oder 'pending' (Plantag ist heute oder später, noch nicht bewertbar).
- * Ist-Einheiten ohne passende Planeinheit sind 'extra' (ungeplant).
+ * Ist-Einheiten ohne passende Planeinheit sind 'extra' (ungeplant) und zählen zum Ist-Umfang der Woche (aber nicht zu einer Planeinheit).
  */
 export function compareWeek(plan, ist, week, startISO, today = todayUTC()) {
   const w = plan.byWeek.get(week);
@@ -61,12 +61,18 @@ export function compareWeek(plan, ist, week, startISO, today = todayUTC()) {
       items: list,
       due: list.filter((i) => i.status === 'done' || i.status === 'missed').reduce((n, i) => n + i.planMinutes, 0),
       done: list.filter((i) => i.status === 'done').reduce((n, i) => n + i.istMinutes, 0),
+      extra: list.filter((i) => i.kind === 'extra').reduce((n, i) => n + i.istMinutes, 0), // ungeplant
     }))
     .sort((a, b) => sportRank(a.sport) - sportRank(b.sport));
 
   const due = groups.reduce((n, g) => n + g.due, 0);
   const done = groups.reduce((n, g) => n + g.done, 0);
   const extra = items.filter((i) => i.kind === 'extra').reduce((n, i) => n + i.istMinutes, 0);
-  const ratio = due > 0 ? done / due : null;
-  return { week, start, items, groups, totals: { planTotal: w.minutes, due, done, extra, ratio, level: ratio === null ? null : levelOf(ratio) } };
+  // Ungeplante Einheiten zählen zum Wochenumfang: Quote = (zugeordnet + ungeplant) / Soll bis heute
+  const actual = done + extra;
+  const ratio = due > 0 ? actual / due : null;
+  return {
+    week, start, items, groups,
+    totals: { planTotal: w.minutes, due, done, extra, actual, ratio, ratioPlanned: due > 0 ? done / due : null, level: ratio === null ? null : levelOf(ratio) },
+  };
 }

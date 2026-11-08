@@ -5,7 +5,6 @@ import { tiles } from '../tiles/registry.js';
 import { state, setState } from '../core/store.js';
 import { importNoteBanner } from '../ui/import-button.js';
 import { updateBox } from '../ui/update-box.js';
-import { deviceRefresh } from '../core/devicesync.js';
 import * as settings from '../core/settings.js';
 import { fmtShortDate, fmtDateTime } from '../core/format.js';
 import { signIn, isConfigured } from '../core/onedrive.js';
@@ -39,11 +38,6 @@ export default {
 
     const banners = [
       importNoteBanner(note),
-      !od && state.fileAccessNeeded
-        ? h('div', { class: 'banner' },
-            'Android möchte den Zugriff auf deine gemerkten Dateien erneut bestätigen. Tippe auf den Knopf und erlaube den Zugriff.',
-            h('button', { class: 'btn btn-wide', type: 'button', style: { marginTop: '8px' }, onclick: () => deviceRefresh({ interactive: true }) }, 'Zugriff erlauben und aktualisieren'))
-        : null,
       authError ? h('div', { class: 'banner banner-error', role: 'alert' }, authError) : null,
       error ? h('div', { class: 'banner banner-error', role: 'alert' }, error, ' ', h('a', { href: '#/settings' }, 'Einstellungen')) : null,
       istError ? h('div', { class: 'banner banner-error', role: 'alert' }, istError) : null,

@@ -16,7 +16,7 @@ export function seasonStats(plan, ist, startISO, today = todayUTC()) {
   if (cur.status === 'unset' || cur.status === 'before') return null;
   const weeks = [], bySport = new Map();
   let due = 0, done = 0, extra = 0;
-  const count = { done: 0, missed: 0, pending: 0 };
+  const count = { done: 0, missed: 0, pending: 0, extra: 0 };
 
   for (const w of plan.weeks) {
     if (w.week > cur.week) break;
@@ -24,20 +24,21 @@ export function seasonStats(plan, ist, startISO, today = todayUTC()) {
     weeks.push({ week: w.week, phase: w.phase, start: res.start, planTotal: w.minutes, ...res.totals });
     due += res.totals.due; done += res.totals.done; extra += res.totals.extra;
     for (const g of res.groups) {
-      const s = bySport.get(g.sport) ?? { sport: g.sport, due: 0, done: 0 };
-      s.due += g.due; s.done += g.done;
+      const s = bySport.get(g.sport) ?? { sport: g.sport, due: 0, done: 0, extra: 0 };
+      s.due += g.due; s.done += g.done; s.extra += g.extra;
       bySport.set(g.sport, s);
     }
-    for (const it of res.items) if (it.kind === 'plan') count[it.status]++;
+    for (const it of res.items) count[it.kind === 'plan' ? it.status : 'extra']++;
   }
-  const ratio = due > 0 ? done / due : null;
+  const actual = done + extra; // ungeplante Einheiten zählen mit
+  const ratio = due > 0 ? actual / due : null;
   const completed = weeks.filter((w) => w.week < cur.week && w.due > 0);
   let streak = 0;
   for (let i = completed.length - 1; i >= 0 && completed[i].level === 'green'; i--) streak++;
   const byRatio = [...completed].sort((a, b) => a.ratio - b.ratio);
   return {
-    currentWeek: cur.week, weeks, due, done, extra, ratio, level: ratio === null ? null : levelOf(ratio),
-    bySport: [...bySport.values()].sort((a, b) => sportRank(a.sport) - sportRank(b.sport)).map((s) => ({ ...s, ratio: s.due > 0 ? s.done / s.due : null })),
+    currentWeek: cur.week, weeks, due, done, extra, actual, ratio, level: ratio === null ? null : levelOf(ratio),
+    bySport: [...bySport.values()].sort((a, b) => sportRank(a.sport) - sportRank(b.sport)).map((s) => ({ ...s, actual: s.done + s.extra, ratio: s.due > 0 ? (s.done + s.extra) / s.due : null })),
     count, streak, worst: byRatio[0] ?? null, best: byRatio[byRatio.length - 1] ?? null,
   };
 }
@@ -60,14 +61,16 @@ export function blocksOf(plan) {
 
 /**
  * Stand und Projektion eines Blocks (Minuten):
+ *  - Ist = zugeordnete + ungeplante Einheiten des Blocks
  *  - Fortschreibung: bisherige Quote (Ist/Soll der fälligen Einheiten) gilt auch für die restlichen Einheiten
  *  - Bestfall: alle restlichen Einheiten werden zu 100 % erfüllt
  *  - nötige Rest-Quote, um insgesamt über 90 % (grün) zu landen
  */
 export function blockProjection(plan, ist, block, startISO, today = todayUTC()) {
-  let planTotal = 0, due = 0, done = 0, missed = 0, pending = 0;
+  let planTotal = 0, due = 0, done = 0, missed = 0, pending = 0, extra = 0;
   for (const w of block.weeks) {
     for (const it of compareWeek(plan, ist, w.week, startISO, today).items) {
+      if (it.kind === 'extra') { extra += it.istMinutes; continue; } // ungeplant: zählt zum Ist-Umfang
       if (it.kind !== 'plan') continue;
       planTotal += it.planMinutes;
       if (it.status === 'done') { due += it.planMinutes; done += it.istMinutes; }
@@ -75,18 +78,19 @@ export function blockProjection(plan, ist, block, startISO, today = todayUTC()) 
       else pending += it.planMinutes;
     }
   }
-  const ratioSoFar = due > 0 ? done / due : null;
+  const actual = done + extra;
+  const ratioSoFar = due > 0 ? actual / due : null;
   const target = THRESHOLDS.green * planTotal;
-  const need = Math.max(0, target - done);
-  const projected = ratioSoFar === null ? null : (done + pending * ratioSoFar) / planTotal;
+  const need = Math.max(0, target - actual);
+  const projected = ratioSoFar === null ? null : (actual + pending * ratioSoFar) / planTotal;
   return {
-    block, planTotal, due, done, missed, pending, ratioSoFar,
+    block, planTotal, due, done, extra, actual, missed, pending, ratioSoFar,
     level: ratioSoFar === null ? null : levelOf(ratioSoFar),
     projected, projectedLevel: projected === null ? null : levelOf(projected),
-    best: planTotal > 0 ? (done + pending) / planTotal : null,
+    best: planTotal > 0 ? (actual + pending) / planTotal : null,
     needQuote: pending > 0 ? need / pending : need > 0 ? Infinity : 0, // 1.0 = Rest genau nach Plan
     finished: pending === 0,
-    started: due > 0 || done > 0,
+    started: due > 0 || actual > 0,
   };
 }
 

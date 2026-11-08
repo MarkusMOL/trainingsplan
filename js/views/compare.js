@@ -75,7 +75,7 @@ export default {
         }));
       },
       stats: [
-        statCell('Ist / Soll bis heute', [`${fmtDuration(t.done)} / ${fmtDuration(t.due)}`, h('small', {}, ' h')], null, true),
+        statCell('Ist / Soll bis heute', [`${fmtDuration(t.actual)} / ${fmtDuration(t.due)}`, h('small', {}, ' h')], null, true),
         statCell('Erfüllung', t.ratio === null ? '–' : fmtPercent(t.ratio * 100),
           h('span', { class: 'bar', role: 'presentation' },
             h('span', { class: `bar-fill ${t.level ? `lv-${t.level}` : ''}`, style: { width: `${Math.min(100, (t.ratio ?? 0) * 100)}%` } }),
@@ -88,7 +88,7 @@ export default {
       ist.sportInferred > 0
         ? h('div', { class: 'banner' }, 'Hinweis: In der Ist-Datei fehlt die Sportart. Sie wurde aus der Reihenfolge der Blöcke abgeleitet.')
         : null,
-      t.extra > 0 ? h('div', { class: 'banner' }, `Zusätzlich ungeplant: ${fmtDuration(t.extra)} h`) : null,
+      t.extra > 0 ? h('div', { class: 'banner banner-extra' }, `Darin ${fmtDuration(t.extra)} h ungeplant – zählt zum Wochenumfang und zur Quote.`) : null,
       res.groups.length
         ? res.groups.map((g) => {
             const meta = SPORTS[g.sport];
@@ -96,7 +96,7 @@ export default {
               h('div', { class: 'group-head' },
                 h('span', { class: 'group-icon', 'aria-hidden': 'true' }, meta?.icon ?? '•'),
                 h('h2', {}, meta?.label ?? g.sport),
-                h('span', { class: 'group-sum' }, `${fmtDuration(g.done)} / ${fmtDuration(g.due)} h`)),
+                h('span', { class: 'group-sum' }, `${fmtDuration(g.done + g.extra)} / ${fmtDuration(g.due)} h`)),
               h('div', { class: 'group-list' }, g.items.map(compareCard)));
           })
         : h('p', { class: 'empty' }, 'In dieser Woche sind keine Einheiten geplant.'),
