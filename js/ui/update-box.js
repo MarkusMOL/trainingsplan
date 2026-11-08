@@ -31,6 +31,6 @@ export function updateBox() {
   }
   return h('div', { class: 'update-box' },
     h('button', { class: 'btn btn-wide', type: 'button', onclick: () => deviceRefresh({ interactive: true }) }, 'Daten aktualisieren'),
-    h('button', { class: 'btn btn-ghost btn-wide', type: 'button', style: { marginTop: '8px' }, onclick: choose }, 'Andere Dateien wählen'),
+    h('button', { class: 'btn btn-ghost btn-wide', type: 'button', style: { marginTop: '8px' }, onclick: choose }, 'Dateien neu wählen (öffnet im gleichen Ordner)'),
     h('p', { class: 'hint' }, `Gemerkt: ${files.map((f) => f.name).join(', ')}.${checked ? ` Zuletzt geprüft: ${fmtDateTime(checked)}.` : ''}`));
 }

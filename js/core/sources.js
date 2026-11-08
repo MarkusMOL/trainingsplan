@@ -172,12 +172,12 @@ export function clearImports() {
 /** Aktualisiert die Anzeige-Liste der gemerkten Dateien. */
 export async function loadDeviceFiles() {
   const list = await fh.remembered();
-  setState({ deviceFiles: list.map((e) => ({ id: e.id, name: e.handle.name })) });
+  setState({ deviceFiles: list.map((e) => ({ id: e.id, name: e.handle.name, handle: e.handle })) });
 }
 
 /** Dateien über den Auswahldialog wählen, importieren und für später merken. */
 export async function pickAndRemember() {
-  const handles = await fh.pick();
+  const handles = await fh.pick(state.deviceFiles[0]?.handle ?? null);
   if (!handles.length) return null;
   const files = await Promise.all(handles.map(async (handle) => {
     const f = await handle.getFile();
@@ -196,21 +196,33 @@ export async function forgetDeviceFiles() {
 /**
  * Liest alle gemerkten Dateien neu und übernimmt geänderte.
  * interactive=true (aus einem Tipp heraus) darf die Freigabe neu anfragen; sonst werden Dateien ohne Freigabe übersprungen.
+ * list: bereits geladene Handles ([{id, handle}]); so beginnt die Freigabe-Anfrage direkt im Tipp, ohne vorherigen Datenbankzugriff.
+ * Ist die Freigabe nicht erteilt, wird trotzdem versucht, die Datei zu lesen (manche Browser erlauben das).
  * @returns {Promise<{results: {id, ok?, unchanged?, error?, name?}[], needPermission: boolean, changed: boolean}>}
  */
-export async function refreshFromHandles({ interactive = false } = {}) {
+export async function refreshFromHandles({ interactive = false, list = null } = {}) {
   const order = ['plan', 'ist', 'basis', 'wk', 'hist'];
-  const list = (await fh.remembered()).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const items = (list ?? (await fh.remembered())).slice().sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   const results = [];
   let needPermission = false, changed = false;
-  for (const { id, handle } of list) {
+  for (const { id, handle } of items) {
     const ds = dataset(id);
     if (!ds) continue;
+    let perm = 'unbekannt', permError = null;
     try {
-      let perm = await handle.queryPermission({ mode: 'read' });
-      if (perm !== 'granted' && interactive) perm = await handle.requestPermission({ mode: 'read' });
-      if (perm !== 'granted') { needPermission = true; continue; }
-      const file = await handle.getFile();
+      try { perm = await handle.queryPermission({ mode: 'read' }); } catch (e) { permError = e.name; }
+      if (perm !== 'granted' && interactive) {
+        try { perm = await handle.requestPermission({ mode: 'read' }); } catch (e) { permError = e.name; }
+      }
+      let file;
+      try {
+        file = await handle.getFile();
+      } catch (e) {
+        if (perm === 'granted') throw e;
+        needPermission = true;
+        results.push({ id, ok: false, name: handle.name, error: `Freigabe fehlt (Status: ${perm}${permError ? `, ${permError}` : ''}; Lesen: ${e.name})` });
+        continue;
+      }
       const text = decodeBytes(await file.arrayBuffer());
       if (text === settings.get(ds.imp)) { results.push({ id, unchanged: true, name: file.name }); continue; }
       saveImport(id, text, file.name);
@@ -218,7 +230,7 @@ export async function refreshFromHandles({ interactive = false } = {}) {
       results.push({ id, ok: true, name: file.name });
       if (id === 'plan') await reload();
     } catch (e) {
-      results.push({ id, ok: false, name: handle.name, error: e.name === 'NotFoundError' ? 'Datei nicht mehr vorhanden (verschoben oder gelöscht)' : e.message });
+      results.push({ id, ok: false, name: handle.name, error: e.name === 'NotFoundError' ? 'Datei nicht mehr vorhanden (verschoben oder gelöscht)' : `${e.name}: ${e.message}` });
     }
   }
   if (changed) await reload();

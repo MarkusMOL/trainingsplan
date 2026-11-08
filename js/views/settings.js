@@ -10,6 +10,7 @@ import { render } from '../core/router.js';
 import { fmtLongDate, fmtShortDate, fmtDateTime } from '../core/format.js';
 import * as od from '../core/onedrive.js';
 import { syncNow } from '../core/sync.js';
+import { diagnoseDeviceFiles } from '../core/devicesync.js';
 import { multiImportButton, importNoteBanner } from '../ui/import-button.js';
 import { APP_VERSION } from '../core/config.js';
 
@@ -147,6 +148,8 @@ export default {
         state.deviceFiles.length
           ? h('section', { class: 'card' }, h('h2', {}, 'Gemerkte Dateien'),
               h('p', { class: 'hint', style: { margin: '0 0 12px' } }, `${state.deviceFiles.map((f) => f.name).join(', ')}. Diese Dateien liest die App bei jedem Öffnen neu.`),
+              h('button', { class: 'btn', type: 'button', onclick: async () => { setState({ importNote: { lines: await diagnoseDeviceFiles(), error: false } }); render(); } }, 'Zugriff prüfen'),
+              ' ',
               h('button', { class: 'btn btn-ghost', type: 'button', onclick: async () => { await forgetDeviceFiles(); flash = { msg: 'Gemerkte Dateien vergessen. Importierte Daten bleiben erhalten.' }; render(); } }, 'Gemerkte Dateien vergessen'))
           : null,
         dataCards,

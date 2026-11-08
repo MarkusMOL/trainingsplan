@@ -45,12 +45,23 @@ export async function remembered() {
   }
 }
 
-/** Öffnet den Dateiauswahldialog (mehrere Dateien). Bricht der Nutzer ab, kommt ein leeres Array zurück. */
-export async function pick() {
+/**
+ * Öffnet den Dateiauswahldialog (mehrere Dateien). startHandle: eine gemerkte Datei; der Dialog öffnet dann im selben Ordner.
+ * Bricht der Nutzer ab, kommt ein leeres Array zurück.
+ */
+export async function pick(startHandle = null) {
+  const base = { multiple: true, id: 'tp-csv' };
   try {
-    return await window.showOpenFilePicker({ multiple: true });
+    return await window.showOpenFilePicker(startHandle ? { ...base, startIn: startHandle } : base);
   } catch (e) {
     if (e?.name === 'AbortError') return [];
-    throw e;
+    if (!startHandle) throw e;
+    // startIn nicht unterstützt oder ungültig: ohne versuchen
+    try {
+      return await window.showOpenFilePicker(base);
+    } catch (e2) {
+      if (e2?.name === 'AbortError') return [];
+      throw e2;
+    }
   }
 }

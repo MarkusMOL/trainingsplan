@@ -1,6 +1,6 @@
 // Abgleich mit den gemerkten Geräte-Dateien (z. B. aus OneDrive gewählt): beim Start und bei Rückkehr in die App.
 import * as settings from './settings.js';
-import { setState } from './store.js';
+import { state, setState } from './store.js';
 import { SYNC } from './config.js';
 import { dataset } from './datasets.js';
 import * as fh from './filehandles.js';
@@ -28,7 +28,7 @@ export async function deviceRefresh({ force = false, interactive = false } = {})
   running = true;
   try {
     settings.set('devTry', String(Date.now()));
-    const r = await refreshFromHandles({ interactive });
+    const r = await refreshFromHandles({ interactive, list: interactive ? state.deviceFiles : null });
     if (r.results.length || r.needPermission) settings.set('devCheckedAt', String(Date.now()));
     setState({ fileAccessNeeded: r.needPermission });
     if (interactive) setState({ importNote: summarizeRefresh(r) });
@@ -42,3 +42,17 @@ export async function deviceRefresh({ force = false, interactive = false } = {})
   }
 }
 
+
+/** Diagnose für die Einstellungen: Zugriffsstatus jeder gemerkten Datei (nur aus einem Tipp heraus aufrufen). */
+export async function diagnoseDeviceFiles() {
+  const lines = [];
+  for (const f of state.deviceFiles) {
+    let q = '?', r = '';
+    try { q = await f.handle.queryPermission({ mode: 'read' }); } catch (e) { q = `Fehler ${e.name}`; }
+    if (q !== 'granted') { try { r = await f.handle.requestPermission({ mode: 'read' }); } catch (e) { r = `Fehler ${e.name}`; } }
+    let g;
+    try { const file = await f.handle.getFile(); g = `lesbar (${file.size} Byte)`; } catch (e) { g = `nicht lesbar (${e.name})`; }
+    lines.push(`${f.name}: Status ${q}${r ? `, nach Anfrage ${r}` : ''}; ${g}`);
+  }
+  return lines;
+}
